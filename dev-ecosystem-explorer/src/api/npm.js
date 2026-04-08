@@ -1,47 +1,18 @@
-// ===== npm Registry API Integration =====
+import { NPM_API, RESULTS_PER_SOURCE } from '../utils/constants'
+import { normalizeNpm } from '../utils/normalize'
+import { withRateLimit } from '../ratelimit'
 
-import { API_ENDPOINTS, PAGE_SIZE } from '../utils/constants';
-import { normalizeNpm } from '../utils/normalize';
-import rateLimitedFetch from '../ratelimit';
-import logger from '../utils/logger';
+async function _fetchNpm(query) {
+  const url = `${NPM_API}` +
+    `?text=${encodeURIComponent(query)}` +
+    `&size=${RESULTS_PER_SOURCE}`
 
-/**
- * Search npm packages.
- * @param {string} query
- * @param {Object} options - { page, perPage, sort }
- * @returns {Promise<{ items: Array, totalCount: number }>}
- */
-export async function searchNpm(query, options = {}) {
-  const { page = 1, perPage = PAGE_SIZE, sort = 'optimal' } = options;
+  const res = await fetch(url)
 
-  const from = (page - 1) * perPage;
-  const sortMap = {
-    relevance: 'optimal',
-    stars: 'popularity',
-    recent: 'maintenance',
-    name: 'optimal',
-  };
+  if (!res.ok) throw new Error(`NPM API error: ${res.status}`)
 
-  const params = new URLSearchParams({
-    text: query,
-    size: String(perPage),
-    from: String(from),
-    quality: '0.65',
-    popularity: '0.98',
-    maintenance: '0.5',
-  });
-
-  const url = `${API_ENDPOINTS.NPM_SEARCH}?${params}`;
-
-  try {
-    const data = await rateLimitedFetch(url);
-    logger.info(`npm: ${data.total} results for "${query}"`);
-    return {
-      items: (data.objects || []).map(normalizeNpm),
-      totalCount: data.total || 0,
-    };
-  } catch (err) {
-    logger.error('npm search failed:', err);
-    throw err;
-  }
+  const data = await res.json()
+  return (data.objects ?? []).map(normalizeNpm)
 }
+
+export const fetchNpm = withRateLimit(_fetchNpm)

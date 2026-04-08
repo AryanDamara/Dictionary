@@ -1,38 +1,28 @@
-// ===== useInfiniteScroll Hook =====
-
-import { useEffect, useRef, useCallback } from 'react';
-
 /**
- * Triggers `onLoadMore` when a sentinel element becomes visible.
+ * useInfiniteScroll — loads more results as the user scrolls down.
+ * Uses page-based slicing of the full results array.
  */
-export function useInfiniteScroll(onLoadMore, { enabled = true, threshold = 0.1 } = {}) {
-  const sentinelRef = useRef(null);
 
-  const handleIntersect = useCallback(
-    (entries) => {
-      const [entry] = entries;
-      if (entry.isIntersecting && enabled) {
-        onLoadMore();
-      }
-    },
-    [onLoadMore, enabled]
-  );
+import { useState, useMemo } from 'react'
+import { PAGE_SIZE } from '../utils/constants'
 
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
+export function useInfiniteScroll(items) {
+  const [page, setPage] = useState(1)
 
-    const observer = new IntersectionObserver(handleIntersect, {
-      root: null,
-      rootMargin: '200px',
-      threshold,
-    });
+  const visibleItems = useMemo(
+    () => items.slice(0, page * PAGE_SIZE),
+    [items, page]
+  )
 
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [handleIntersect, threshold]);
+  const hasMore = visibleItems.length < items.length
 
-  return sentinelRef;
+  function loadMore() {
+    if (hasMore) setPage((p) => p + 1)
+  }
+
+  function reset() {
+    setPage(1)
+  }
+
+  return { visibleItems, hasMore, loadMore, reset }
 }
-
-export default useInfiniteScroll;

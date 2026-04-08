@@ -1,73 +1,140 @@
-// ===== AutocompleteDropdown Component =====
-import React from 'react';
+import { useMemo } from 'react'
+import { getRecentSearches } from '../../cache/storageCache'
+import { allKeys } from '../../cache'
+import { useKeyboardNav } from '../../hooks/useKeyboardNav'
 
-const css = {
-  dropdown: {
-    position: 'absolute',
-    top: 'calc(100% + 6px)',
-    left: 0,
-    right: 0,
-    background: 'var(--color-bg-card)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-md)',
-    boxShadow: 'var(--shadow-lg)',
-    zIndex: 'var(--z-dropdown)',
-    overflow: 'hidden',
-    animation: 'fadeIn var(--transition-fast) ease-out',
-  },
-  item: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-2)',
-    padding: 'var(--space-3) var(--space-4)',
-    cursor: 'pointer',
-    fontSize: 'var(--font-size-sm)',
-    color: 'var(--color-text-secondary)',
-    transition: 'background var(--transition-fast)',
-    borderBottom: '1px solid var(--color-border)',
-  },
-  itemHover: {
-    background: 'rgba(99, 102, 241, 0.08)',
-    color: 'var(--color-text-primary)',
-  },
-  icon: {
-    color: 'var(--color-text-muted)',
-    fontSize: '14px',
-    flexShrink: 0,
-  },
-  label: {
-    paddingTop: 'var(--space-2)',
-    paddingBottom: 'var(--space-1)',
-    paddingLeft: 'var(--space-4)',
-    fontSize: 'var(--font-size-xs)',
-    color: 'var(--color-text-muted)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    fontWeight: 'var(--font-weight-semibold)',
-  },
-};
+export default function AutocompleteDropdown({ isOpen, query, onSelect, inputRef }) {
+  const recents = useMemo(() => getRecentSearches(), [isOpen])
 
-export default function AutocompleteDropdown({ items = [], onSelect, visible = false }) {
-  if (!visible || items.length === 0) return null;
+  const suggestions = useMemo(() => {
+    if (!query || query.length < 1) return []
+    const q = query.toLowerCase()
+    return allKeys()
+      .filter((k) => k.toLowerCase().includes(q) && k.toLowerCase() !== q)
+      .slice(0, 8)
+  }, [query, isOpen])
+
+  const allItems = useMemo(() => {
+    const items = []
+    recents.forEach((r) => items.push({ type: 'recent', value: r }))
+    suggestions.forEach((s) => items.push({ type: 'suggestion', value: s }))
+    return items
+  }, [recents, suggestions])
+
+  const { activeIndex, handleKeyDown, resetIndex } = useKeyboardNav({
+    itemCount: allItems.length,
+    onSelect: (index) => {
+      if (allItems[index]) onSelect(allItems[index].value)
+      resetIndex()
+    },
+    onClose: () => {
+      inputRef?.current?.focus()
+    },
+  })
+
+  const shouldShow = isOpen && (allItems.length > 0)
+
+  if (!shouldShow) return null
 
   return (
-    <div style={css.dropdown}>
-      <div style={css.label}>Recent Searches</div>
-      {items.slice(0, 8).map((item, i) => (
-        <div
-          key={i}
-          style={css.item}
-          onClick={() => onSelect(item)}
-          onMouseEnter={(e) => Object.assign(e.currentTarget.style, css.itemHover)}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--color-text-secondary)';
-          }}
-        >
-          <span style={css.icon}>🕐</span>
-          <span>{item}</span>
+    <div
+      className="autocomplete-dropdown"
+      role="listbox"
+      onKeyDown={handleKeyDown}
+    >
+      {recents.length > 0 && (
+        <div className="dropdown-section">
+          <div className="dropdown-section-title">Recent</div>
+          {recents.map((r, i) => (
+            <button
+              key={`recent-${r}`}
+              className={`dropdown-item ${activeIndex === i ? 'active' : ''}`}
+              role="option"
+              aria-selected={activeIndex === i}
+              onMouseDown={(e) => { e.preventDefault(); onSelect(r) }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1 4 1 10 7 10"/>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+              </svg>
+              <span>{r}</span>
+            </button>
+          ))}
         </div>
-      ))}
+      )}
+      {suggestions.length > 0 && (
+        <div className="dropdown-section">
+          <div className="dropdown-section-title">Suggestions</div>
+          {suggestions.map((s, i) => {
+            const idx = recents.length + i
+            return (
+              <button
+                key={`sug-${s}`}
+                className={`dropdown-item ${activeIndex === idx ? 'active' : ''}`}
+                role="option"
+                aria-selected={activeIndex === idx}
+                onMouseDown={(e) => { e.preventDefault(); onSelect(s) }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <span>{s}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <style>{`
+        .autocomplete-dropdown {
+          position: absolute;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          background: var(--bg-elevated);
+          border: 1px solid var(--border-primary);
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-lg);
+          z-index: 50;
+          max-height: 320px;
+          overflow-y: auto;
+          animation: fadeIn 0.15s ease;
+        }
+        .dropdown-section {
+          padding: var(--space-xs) 0;
+        }
+        .dropdown-section:not(:last-child) {
+          border-bottom: 1px solid var(--border-secondary);
+        }
+        .dropdown-section-title {
+          padding: var(--space-sm) var(--space-lg);
+          font-size: var(--text-xs);
+          font-weight: 600;
+          color: var(--text-tertiary);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .dropdown-item {
+          display: flex;
+          align-items: center;
+          gap: var(--space-sm);
+          width: 100%;
+          padding: var(--space-sm) var(--space-lg);
+          text-align: left;
+          color: var(--text-secondary);
+          font-size: var(--text-sm);
+          transition: all var(--transition-fast);
+        }
+        .dropdown-item:hover,
+        .dropdown-item.active {
+          background: var(--color-primary-light);
+          color: var(--text-primary);
+        }
+        .dropdown-item svg {
+          flex-shrink: 0;
+          opacity: 0.5;
+        }
+      `}</style>
     </div>
-  );
+  )
 }

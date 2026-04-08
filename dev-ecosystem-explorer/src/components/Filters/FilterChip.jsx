@@ -1,51 +1,40 @@
-// ===== FilterChip Component =====
-import React from 'react';
+import { useFilterStore } from '../../store/filterStore'
 
-const css = {
-  chip: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 'var(--space-1)',
-    padding: '4px 10px',
-    borderRadius: 'var(--radius-full)',
-    background: 'rgba(99, 102, 241, 0.15)',
-    border: '1px solid rgba(99, 102, 241, 0.3)',
-    color: 'var(--color-accent-light)',
-    fontSize: 'var(--font-size-xs)',
-    fontWeight: 'var(--font-weight-medium)',
-    transition: 'all var(--transition-fast)',
-  },
-  closeBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 16,
-    height: 16,
-    borderRadius: '50%',
-    background: 'rgba(255,255,255,0.1)',
-    border: 'none',
-    color: 'var(--color-accent-light)',
-    cursor: 'pointer',
-    fontSize: '10px',
-    lineHeight: 1,
-    padding: 0,
-    transition: 'background var(--transition-fast)',
-  },
-};
+export default function FilterChip({ field, value, label }) {
+  const { activeFilters, toggleFilter } = useFilterStore()
 
-export default function FilterChip({ label, onRemove }) {
+  const isActive = field === 'https' || field === 'auth' || field === 'official'
+    ? activeFilters[field] === value
+    : (activeFilters[field] ?? []).includes(value)
+
   return (
-    <span style={css.chip}>
-      {label}
-      <button
-        style={css.closeBtn}
-        onClick={onRemove}
-        aria-label={`Remove filter: ${label}`}
-        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-      >
-        ✕
-      </button>
-    </span>
-  );
+    <button
+      className={`filter-chip ${isActive ? 'active' : ''}`}
+      onClick={() => toggleFilter(field, value)}
+    >
+      {label ?? value}
+      <style>{`
+        .filter-chip {
+          padding: 4px 12px;
+          border-radius: var(--radius-full);
+          font-size: var(--text-xs);
+          font-weight: 500;
+          border: 1px solid var(--border-primary);
+          color: var(--text-secondary);
+          background: transparent;
+          transition: all var(--transition-fast);
+          white-space: nowrap;
+        }
+        .filter-chip:hover {
+          border-color: var(--color-primary-border);
+          color: var(--color-primary);
+        }
+        .filter-chip.active {
+          background: var(--color-primary);
+          color: white;
+          border-color: var(--color-primary);
+        }
+      `}</style>
+    </button>
+  )
 }

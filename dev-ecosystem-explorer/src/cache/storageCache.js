@@ -1,44 +1,101 @@
-// ===== LocalStorage-backed Cache =====
+/**
+ * localStorage cache layer.
+ *
+ * Every localStorage call is wrapped in try/catch because:
+ *   1. Private/incognito mode may block localStorage entirely
+ *   2. QuotaExceededError fires when storage is full
+ * Both must fail silently — the cache is optional, not critical.
+ */
 
-import { CACHE_TTL } from '../utils/constants';
-import logger from '../utils/logger';
+import { CACHE_PREFIX, RECENT_KEY } from '../utils/constants'
 
-const STORAGE_PREFIX = 'devex_cache_';
+export function get(key) {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + key)
+    if (!raw) return null
+    const entry = JSON.parse(raw)
+    if (Date.now() > entry.expiresAt) {
+      localStorage.removeItem(CACHE_PREFIX + key)
+      return null
+    }
+    return entry.data
+  } catch {
+    return null
+  }
+}
 
-export const storageCache = {
-  get(key) {
-    try {
-      const raw = localStorage.getItem(STORAGE_PREFIX + key);
-      if (!raw) return null;
-      const entry = JSON.parse(raw);
-      if (Date.now() - entry.timestamp > (entry.ttl || CACHE_TTL)) {
-        localStorage.removeItem(STORAGE_PREFIX + key);
-        return null;
+export function set(key, data, ttl) {
+  try {
+    const entry = { data, expiresAt: Date.now() + ttl }
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(entry))
+  } catch {
+    // Fail silently — cache is not critical
+  }
+}
+
+export function has(key) {
+  return get(key) !== null
+}
+
+export function del(key) {
+  try {
+    localStorage.removeItem(CACHE_PREFIX + key)
+  } catch {
+    // Fail silently
+  }
+}
+
+export function clear() {
+  try {
+    const keysToRemove = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && k.startsWith(CACHE_PREFIX)) keysToRemove.push(k)
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k))
+  } catch {
+    // Fail silently
+  }
+}
+
+export function keys() {
+  try {
+    const result = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && k.startsWith(CACHE_PREFIX)) {
+        const query = k.slice(CACHE_PREFIX.length)
+        if (has(query)) result.push(query)
       }
-      return entry.data;
-    } catch (e) {
-      logger.warn('Storage cache read error:', e);
-      return null;
     }
-  },
+    return result
+  } catch {
+    return []
+  }
+}
 
-  set(key, data, ttl = CACHE_TTL) {
-    try {
-      const entry = { data, timestamp: Date.now(), ttl };
-      localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(entry));
-    } catch (e) {
-      logger.warn('Storage cache write error:', e);
-    }
-  },
+// ─── Recent Searches ──────────────────────────────────────────────
+const MAX_RECENT = 5
 
-  remove(key) {
-    localStorage.removeItem(STORAGE_PREFIX + key);
-  },
+export function getRecentSearches() {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
 
-  clear() {
-    const keys = Object.keys(localStorage).filter((k) => k.startsWith(STORAGE_PREFIX));
-    keys.forEach((k) => localStorage.removeItem(k));
-  },
-};
-
-export default storageCache;
+export function addRecentSearch(query) {
+  try {
+    const trimmed = query.trim().toLowerCase()
+    if (!trimmed) return
+    let recents = getRecentSearches()
+    recents = recents.filter((q) => q !== trimmed)
+    recents.unshift(trimmed)
+    recents = recents.slice(0, MAX_RECENT)
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recents))
+  } catch {
+    // Fail silently
+  }
+}

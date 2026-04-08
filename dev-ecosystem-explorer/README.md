@@ -1,62 +1,16 @@
-# Dev Ecosystem Explorer
+# React + Vite
 
-A modern React app that lets you search across **GitHub repositories**, **npm packages**, and **1,400+ public APIs** — all in one place.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## ✨ Features
+Currently, two official plugins are available:
 
-- **Multi-source search** — GitHub, npm, and Public APIs aggregated
-- **Smart caching** — Two-tier cache (memory + localStorage) to minimize API calls
-- **Rate limiting** — Exponential backoff + request queue to handle API limits gracefully
-- **Infinite scroll** — Automatic pagination with Intersection Observer
-- **Favorites** — Star any result, persisted across sessions
-- **Fuzzy filtering** — Client-side fuzzy search with Fuse.js
-- **Dark/Light themes** — Toggle with smooth transitions
-- **Keyboard shortcuts** — ⌘K to focus search
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## 🚀 Getting Started
+## React Compiler
 
-```bash
-# Install dependencies
-npm install
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-# Start dev server
-npm run dev
+## Expanding the ESLint configuration
 
-# Build for production
-npm run build
-```
-
-## 🔑 API Keys (Optional)
-
-Create a `.env` file from the template:
-
-```bash
-cp .env.example .env
-```
-
-Add your GitHub Personal Access Token (optional, increases rate limit):
-```
-VITE_GITHUB_TOKEN=ghp_your_token_here
-```
-
-## 🛠 Tech Stack
-
-- **React 18** — UI framework
-- **Vite** — Build tool
-- **Zustand** — State management
-- **Fuse.js** — Fuzzy search
-- **Vanilla CSS** — Custom design tokens & themes
-
-## 📁 Project Structure
-
-```
-src/
-  api/          # GitHub, npm, Public APIs integrations
-  cache/        # Memory + localStorage + HTTP caching
-  ratelimit/    # Backoff + request queue
-  hooks/        # useSearch, useDebounce, useInfiniteScroll, etc.
-  components/   # Search, Filters, Results, Layout, Feedback
-  store/        # Zustand stores (search, filters, favorites)
-  utils/        # Constants, normalizers, fuzzy search, logger
-  styles/       # Design tokens, themes, global styles
-```
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

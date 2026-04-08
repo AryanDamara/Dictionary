@@ -1,82 +1,78 @@
-// ===== useSearch Hook =====
+/**
+ * useSearch — the centrepiece hook.
+ *
+ * Pipeline:
+ *   1. Debounce the raw query (300ms)
+ *   2. Check cache on debounced value change
+ *   3. If cache miss → call aggregateSearch
+ *   4. Cancellation token prevents stale results from fast typing
+ */
 
-import { useCallback, useEffect } from 'react';
-import useSearchStore from '../store/searchStore';
-import useFilterStore from '../store/filterStore';
-import { useDebounce } from './useDebounce';
-import { aggregateSearch, mergeResults, getSourceCounts } from '../api';
-import { DEBOUNCE_MS, SOURCES } from '../utils/constants';
-import logger from '../utils/logger';
+import { useState, useEffect, useRef } from 'react'
+import { useDebounce } from './useDebounce'
+import { aggregateSearch } from '../api'
+import * as cache from '../cache'
+import { addRecentSearch } from '../cache/storageCache'
+import { trackSearch } from '../utils/analytics'
+import { logger } from '../utils/logger'
+import { SEARCH_DEBOUNCE_MS } from '../utils/constants'
 
-export function useSearch() {
-  const {
-    query, setQuery, setResults, setLoading, setErrors,
-    setPage, setHasMore, addToHistory, reset,
-    isLoading, mergedItems, sourceCounts, errors,
-    activeSource, setActiveSource, page, hasMore,
-    results, appendResults, searchHistory,
-  } = useSearchStore();
+export function useSearch(query) {
+  const [results, setResults] = useState([])
+  const [errors, setErrors]   = useState([])
+  const [news, setNews]       = useState([])
+  const [loading, setLoading] = useState(false)
 
-  const { language, category, sortBy } = useFilterStore();
-  const debouncedQuery = useDebounce(query, DEBOUNCE_MS);
+  const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS)
+  const abortRef = useRef({ cancelled: false })
 
-  const performSearch = useCallback(async (searchQuery, searchPage = 1, append = false) => {
-    if (!searchQuery || searchQuery.trim().length < 2) {
-      if (!append) reset();
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { results: apiResults, errors: apiErrors } = await aggregateSearch(
-        searchQuery,
-        { page: searchPage, sort: sortBy, language, category }
-      );
-
-      const merged = mergeResults(apiResults);
-      const counts = getSourceCounts(apiResults);
-
-      if (append) {
-        appendResults(merged);
-      } else {
-        setResults(apiResults, merged, counts);
-        addToHistory(searchQuery);
-      }
-
-      setErrors(apiErrors);
-      setHasMore(merged.length > 0);
-    } catch (err) {
-      logger.error('Search failed:', err);
-      setErrors({ general: err });
-      setLoading(false);
-    }
-  }, [sortBy, language, category]);
-
-  // Trigger search when debounced query changes
   useEffect(() => {
-    if (debouncedQuery) {
-      performSearch(debouncedQuery, 1, false);
+    // Cancel any previous in-flight search
+    abortRef.current.cancelled = true
+    const token = { cancelled: false }
+    abortRef.current = token
+
+    const trimmed = debouncedQuery?.trim()
+
+    if (!trimmed) {
+      setResults([])
+      setErrors([])
+      setLoading(false)
+      return
     }
-  }, [debouncedQuery, sortBy, language, category]);
 
-  const loadMore = useCallback(() => {
-    if (isLoading || !hasMore) return;
-    const nextPage = page + 1;
-    setPage(nextPage);
-    performSearch(query, nextPage, true);
-  }, [isLoading, hasMore, page, query]);
+    // Check cache first
+    const cached = cache.get(trimmed)
+    if (cached) {
+      logger.info('cache', 'hit', { query: trimmed })
+      setResults(cached.results ?? [])
+      setErrors(cached.errors ?? [])
+      setNews(cached.news ?? [])
+      setLoading(false)
+      return
+    }
 
-  // Filter items by active source
-  const filteredItems = activeSource === SOURCES.ALL
-    ? mergedItems
-    : mergedItems.filter((item) => item.source === activeSource);
+    // Cache miss — fetch from APIs
+    setLoading(true)
 
-  return {
-    query, setQuery, filteredItems, sourceCounts,
-    isLoading, errors, activeSource, setActiveSource,
-    loadMore, hasMore, performSearch, searchHistory,
-  };
+    aggregateSearch(trimmed)
+      .then((data) => {
+        if (token.cancelled) return // stale result — discard
+        cache.set(trimmed, data)
+        addRecentSearch(trimmed)
+        trackSearch(trimmed)
+        setResults(data.results)
+        setErrors(data.errors)
+        setNews(data.news ?? [])
+        setLoading(false)
+      })
+      .catch((err) => {
+        if (token.cancelled) return
+        logger.error('search', 'aggregateSearch failed', { err: err?.message })
+        setErrors([{ source: 'unknown', error: err }])
+        setLoading(false)
+      })
+  }, [debouncedQuery])
+
+  return { results, errors, news, loading }
 }
-
-export default useSearch;

@@ -1,17 +1,40 @@
-// ===== Logger Utility =====
+/**
+ * Structured logger that wraps console.
+ *
+ * In production: suppress debug and info.
+ * In development: show all levels.
+ */
 
-const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
-const CURRENT_LEVEL = import.meta.env.DEV ? 'debug' : 'warn';
+const isProd = typeof import.meta !== 'undefined' && import.meta.env?.PROD
 
-function shouldLog(level) {
-  return LOG_LEVELS[level] >= LOG_LEVELS[CURRENT_LEVEL];
+function timestamp() {
+  return new Date().toISOString()
 }
 
-const logger = {
-  debug: (...args) => shouldLog('debug') && console.log('[DEBUG]', ...args),
-  info: (...args) => shouldLog('info') && console.info('[INFO]', ...args),
-  warn: (...args) => shouldLog('warn') && console.warn('[WARN]', ...args),
-  error: (...args) => shouldLog('error') && console.error('[ERROR]', ...args),
-};
+function log(level, source, message, data) {
+  const prefix = `[${level.toUpperCase()}] [${timestamp()}] [${source}]`
+  if (data !== undefined) {
+    console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](
+      prefix, message, data
+    )
+  } else {
+    console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](
+      prefix, message
+    )
+  }
+}
 
-export default logger;
+export const logger = {
+  debug(source, message, data) {
+    if (!isProd) log('debug', source, message, data)
+  },
+  info(source, message, data) {
+    if (!isProd) log('info', source, message, data)
+  },
+  warn(source, message, data) {
+    log('warn', source, message, data)
+  },
+  error(source, message, data) {
+    log('error', source, message, data)
+  },
+}

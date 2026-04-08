@@ -1,226 +1,189 @@
-// ===== ResultCard Component =====
-import React from 'react';
-import { SOURCES, SOURCE_COLORS } from '../../utils/constants';
+import StarsBadge from './StarsBadge'
+import HttpsBadge from './HttpsBadge'
+import OfficialBadge from './OfficialBadge'
+import { useFavorites } from '../../hooks/useFavorites'
+import { useCompareStore } from '../../store/compareStore'
+import { formatRelative } from '../../utils/constants'
 
-const css = {
-  card: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-3)',
-    padding: 'var(--space-5)',
-    background: 'var(--gradient-card)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-lg)',
-    transition: 'all var(--transition-base)',
-    cursor: 'pointer',
-    position: 'relative',
-    overflow: 'hidden',
-    animation: 'fadeIn var(--transition-base) ease-out both',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 'var(--space-3)',
-  },
-  titleRow: {
-    flex: 1,
-    minWidth: 0,
-  },
-  title: {
-    fontSize: 'var(--font-size-base)',
-    fontWeight: 'var(--font-weight-semibold)',
-    color: 'var(--color-text-primary)',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    display: 'block',
-    textDecoration: 'none',
-    transition: 'color var(--transition-fast)',
-  },
-  description: {
-    fontSize: 'var(--font-size-sm)',
-    color: 'var(--color-text-secondary)',
-    lineHeight: 'var(--line-height-relaxed)',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
-    overflow: 'hidden',
-  },
-  meta: {
-    display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 'var(--space-3)',
-    fontSize: 'var(--font-size-xs)',
-    color: 'var(--color-text-muted)',
-  },
-  metaItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  badge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '2px 8px',
-    borderRadius: 'var(--radius-full)',
-    fontSize: '11px',
-    fontWeight: 'var(--font-weight-semibold)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-  },
-  tags: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '4px',
-  },
-  tag: {
-    padding: '2px 8px',
-    borderRadius: 'var(--radius-full)',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid var(--color-border)',
-    fontSize: '11px',
-    color: 'var(--color-text-muted)',
-  },
-  favBtn: {
-    flexShrink: 0,
-    width: 32,
-    height: 32,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '50%',
-    border: '1px solid var(--color-border)',
-    background: 'transparent',
-    cursor: 'pointer',
-    fontSize: '16px',
-    transition: 'all var(--transition-fast)',
-  },
-  shimmer: {
-    position: 'absolute',
-    top: 0,
-    left: '-100%',
-    width: '100%',
-    height: '100%',
-    background: 'var(--gradient-shimmer)',
-    transition: 'left 0.5s ease',
-    pointerEvents: 'none',
-  },
-};
-
-function getBadgeStyle(source) {
-  const color = SOURCE_COLORS[source] || 'var(--color-accent)';
-  return {
-    ...css.badge,
-    background: `${color}18`,
-    color: color,
-    border: `1px solid ${color}30`,
-  };
+const SOURCE_LABELS = {
+  github: 'GitHub', npm: 'NPM', publicapi: 'Public API',
+  pypi: 'PyPI', docker: 'Docker', hackernews: 'HN',
+  crates: 'Crates.io', rubygems: 'RubyGems',
 }
 
-const SOURCE_LABELS_SHORT = {
-  [SOURCES.GITHUB]: 'GitHub',
-  [SOURCES.NPM]: 'npm',
-  [SOURCES.PUBLIC_APIS]: 'API',
-};
+const SOURCE_COLORS = {
+  github: 'var(--color-github)', npm: 'var(--color-npm)',
+  publicapi: 'var(--color-publicapi)', pypi: 'var(--color-pypi)',
+  docker: 'var(--color-docker)', hackernews: 'var(--color-hackernews)',
+  crates: 'var(--color-crates)', rubygems: 'var(--color-rubygems)',
+}
 
-export default function ResultCard({ item, isFavorite, onToggleFavorite, style = {} }) {
+export default function ResultCard({ result }) {
+  const { isFavorite, toggle } = useFavorites()
+  const { isComparing, toggleItem, items } = useCompareStore()
+  const fav = isFavorite(result.id)
+  const comparing = isComparing(result.id)
+  const canCompare = items.length < 3 || comparing
+
   return (
-    <div
-      style={{ ...css.card, ...style }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = 'var(--color-accent)';
-        e.currentTarget.style.boxShadow = 'var(--shadow-glow)';
-        e.currentTarget.style.transform = 'translateY(-2px)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--color-border)';
-        e.currentTarget.style.boxShadow = 'none';
-        e.currentTarget.style.transform = 'translateY(0)';
-      }}
-    >
-      <div style={css.header}>
-        <div style={css.titleRow}>
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={css.title}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-accent-light)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-primary)'; }}
+    <article className="result-card">
+      <div className="card-header">
+        <span className="source-badge" style={{ '--src-color': SOURCE_COLORS[result.source] }}>
+          {SOURCE_LABELS[result.source] ?? result.source}
+        </span>
+        <div className="card-actions">
+          <button
+            className={`fav-btn ${fav ? 'active' : ''}`}
+            onClick={() => toggle(result)}
+            aria-label={fav ? 'Remove from favorites' : 'Add to favorites'}
+            title={fav ? 'Remove from favorites' : 'Add to favorites'}
           >
-            {item.title}
-          </a>
-          <span style={getBadgeStyle(item.source)}>
-            {SOURCE_LABELS_SHORT[item.source]}
-          </span>
-        </div>
-        <button
-          style={{
-            ...css.favBtn,
-            background: isFavorite ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
-            borderColor: isFavorite ? 'rgba(245, 158, 11, 0.3)' : 'var(--color-border)',
-          }}
-          onClick={(e) => { e.stopPropagation(); onToggleFavorite(item); }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(245, 158, 11, 0.2)';
-            e.currentTarget.style.transform = 'scale(1.1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = isFavorite ? 'rgba(245, 158, 11, 0.15)' : 'transparent';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-        >
-          {isFavorite ? '★' : '☆'}
-        </button>
-      </div>
-
-      <p style={css.description}>{item.description}</p>
-
-      <div style={css.meta}>
-        {item.stars > 0 && (
-          <span style={css.metaItem}>
-            ⭐ {item.stars.toLocaleString()}
-          </span>
-        )}
-        {item.language && (
-          <span style={css.metaItem}>
-            <span style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              background: 'var(--color-accent)',
-              display: 'inline-block',
-            }} />
-            {item.language}
-          </span>
-        )}
-        {item.owner?.name && (
-          <span style={css.metaItem}>👤 {item.owner.name}</span>
-        )}
-        {item.forks > 0 && (
-          <span style={css.metaItem}>🔀 {item.forks.toLocaleString()}</span>
-        )}
-        {item.version && (
-          <span style={css.metaItem}>v{item.version}</span>
-        )}
-        {item.auth && item.source === SOURCES.PUBLIC_APIS && (
-          <span style={css.metaItem}>🔑 {item.auth}</span>
-        )}
-      </div>
-
-      {item.topics && item.topics.length > 0 && (
-        <div style={css.tags}>
-          {item.topics.slice(0, 5).map((tag) => (
-            <span key={tag} style={css.tag}>{tag}</span>
-          ))}
-          {item.topics.length > 5 && (
-            <span style={css.tag}>+{item.topics.length - 5}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill={fav ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
+          {canCompare && (
+            <button
+              className={`compare-btn ${comparing ? 'active' : ''}`}
+              onClick={() => toggleItem(result)}
+              aria-label={comparing ? 'Remove from comparison' : 'Compare'}
+              title={comparing ? 'Remove from comparison' : 'Compare'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+            </button>
           )}
         </div>
-      )}
-    </div>
-  );
+      </div>
+
+      <a href={result.url} target="_blank" rel="noopener noreferrer" className="card-name">
+        {result.name}
+      </a>
+
+      <p className="card-description">{result.description}</p>
+
+      <div className="card-meta">
+        {result.stars !== null && <StarsBadge count={result.stars} />}
+        {result.https !== null && <HttpsBadge https={result.https} />}
+        {result.isOfficial && <OfficialBadge isOfficial />}
+
+        {result.downloads !== null && (
+          <span className="meta-item downloads">
+            ↓ {result.downloads.toLocaleString()}
+          </span>
+        )}
+        {result.language && (
+          <span className="meta-item language">{result.language}</span>
+        )}
+        {result.version && (
+          <span className="meta-item version">v{result.version}</span>
+        )}
+        {result.license && (
+          <span className="meta-item license">{result.license}</span>
+        )}
+        {result.category && (
+          <span className="meta-item category">{result.category}</span>
+        )}
+        {result.auth && (
+          <span className="meta-item auth">{result.auth}</span>
+        )}
+        {result.updatedAt && (
+          <span className="meta-item updated">{formatRelative(result.updatedAt)}</span>
+        )}
+      </div>
+
+      <style>{`
+        .result-card {
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: var(--radius-lg);
+          padding: var(--space-lg);
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-sm);
+          transition: all var(--transition-fast);
+          animation: fadeIn 0.3s ease;
+        }
+        .result-card:hover {
+          border-color: var(--color-primary-border);
+          box-shadow: var(--shadow-md);
+          transform: translateY(-1px);
+        }
+        .card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .source-badge {
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          padding: 2px 8px;
+          border-radius: var(--radius-full);
+          color: var(--src-color);
+          background: color-mix(in srgb, var(--src-color) 12%, transparent);
+        }
+        .card-actions {
+          display: flex;
+          align-items: center;
+          gap: var(--space-xs);
+        }
+        .fav-btn, .compare-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: var(--radius-sm);
+          color: var(--text-tertiary);
+          transition: all var(--transition-fast);
+        }
+        .fav-btn:hover { color: #ef4444; }
+        .fav-btn.active { color: #ef4444; }
+        .compare-btn:hover { color: var(--color-primary); }
+        .compare-btn.active {
+          color: var(--color-primary);
+          background: var(--color-primary-light);
+        }
+        .card-name {
+          font-size: var(--text-base);
+          font-weight: 600;
+          color: var(--text-primary);
+          text-decoration: none;
+          word-break: break-word;
+        }
+        .card-name:hover { color: var(--color-primary); }
+        .card-description {
+          font-size: var(--text-sm);
+          color: var(--text-secondary);
+          line-height: 1.5;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .card-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: var(--space-sm);
+          margin-top: var(--space-xs);
+          align-items: center;
+        }
+        .meta-item {
+          font-size: var(--text-xs);
+          color: var(--text-tertiary);
+          padding: 2px 8px;
+          background: var(--badge-bg);
+          border-radius: var(--radius-full);
+          font-weight: 500;
+        }
+        .meta-item.downloads {
+          color: var(--color-success);
+          background: var(--color-success-light);
+        }
+      `}</style>
+    </article>
+  )
 }

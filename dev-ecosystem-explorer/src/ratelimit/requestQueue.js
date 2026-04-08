@@ -1,50 +1,38 @@
-// ===== Concurrent Request Queue =====
-// Limits the number of in-flight requests to avoid hammering APIs.
+/**
+ * Concurrency limiter — a request queue.
+ *
+ * maxConcurrent = 3 means at most 3 requests fly at once
+ * (one per source). Any extra requests wait in line.
+ */
 
-import { MAX_CONCURRENT_REQUESTS } from '../utils/constants';
-import logger from '../utils/logger';
+import { MAX_CONCURRENT } from '../utils/constants'
 
-class RequestQueue {
-  constructor(maxConcurrent = MAX_CONCURRENT_REQUESTS) {
-    this.maxConcurrent = maxConcurrent;
-    this.running = 0;
-    this.queue = [];
-  }
+function createRequestQueue(maxConcurrent = MAX_CONCURRENT) {
+  const pending = []
+  let running   = 0
 
-  /**
-   * Enqueue an async task. Resolves when the task completes.
-   */
-  enqueue(task) {
-    return new Promise((resolve, reject) => {
-      this.queue.push({ task, resolve, reject });
-      this._processNext();
-    });
-  }
-
-  async _processNext() {
-    if (this.running >= this.maxConcurrent || this.queue.length === 0) return;
-
-    this.running++;
-    const { task, resolve, reject } = this.queue.shift();
-
-    try {
-      const result = await task();
-      resolve(result);
-    } catch (err) {
-      reject(err);
-    } finally {
-      this.running--;
-      this._processNext();
+  function tryFlush() {
+    while (running < maxConcurrent && pending.length > 0) {
+      const { fn, resolve, reject } = pending.shift()
+      running++
+      fn()
+        .then(resolve)
+        .catch(reject)
+        .finally(() => {
+          running--
+          tryFlush()
+        })
     }
   }
 
-  get pending() {
-    return this.queue.length;
+  function enqueue(fn) {
+    return new Promise((resolve, reject) => {
+      pending.push({ fn, resolve, reject })
+      tryFlush()
+    })
   }
 
-  get active() {
-    return this.running;
-  }
+  return { enqueue }
 }
 
-export default new RequestQueue();
+export const requestQueue = createRequestQueue(MAX_CONCURRENT)

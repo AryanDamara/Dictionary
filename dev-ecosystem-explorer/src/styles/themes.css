@@ -1,29 +1,70 @@
-/* ===== Theme Overrides ===== */
+/* ─── Theme definitions ───────────────────────────────────────────── */
 
-/* Dark theme is default — see tokens.css */
+/* Light theme (default) */
+[data-theme='light'],
+:root {
+  --bg-primary:       #fafbfc;
+  --bg-secondary:     #ffffff;
+  --bg-tertiary:      #f3f4f6;
+  --bg-elevated:      #ffffff;
+  --bg-overlay:       rgba(0, 0, 0, 0.4);
 
-[data-theme="light"] {
-  --color-bg-primary: #f5f5fa;
-  --color-bg-secondary: #eeeef5;
-  --color-bg-tertiary: #e5e5f0;
-  --color-bg-card: #ffffff;
-  --color-bg-card-hover: #f8f8ff;
-  --color-bg-input: #ffffff;
-  --color-bg-overlay: rgba(245, 245, 250, 0.9);
+  --text-primary:     #111827;
+  --text-secondary:   #6b7280;
+  --text-tertiary:    #9ca3af;
+  --text-inverse:     #ffffff;
 
-  --color-border: rgba(0, 0, 0, 0.1);
-  --color-border-focus: rgba(99, 102, 241, 0.5);
+  --border-primary:   #e5e7eb;
+  --border-secondary: #f3f4f6;
+  --border-focus:     var(--color-primary);
 
-  --color-text-primary: #1a1a2e;
-  --color-text-secondary: #555570;
-  --color-text-muted: #999aac;
+  --input-bg:         #ffffff;
+  --input-border:     #d1d5db;
 
-  --gradient-hero: linear-gradient(135deg, #f5f5fa 0%, #eeeef5 40%, #e5e5f0 100%);
-  --gradient-card: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(238,238,245,0.5));
+  --card-bg:          #ffffff;
+  --card-border:      #e5e7eb;
+  --card-hover:       #f9fafb;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12);
-  --shadow-card: 0 2px 12px rgba(0,0,0,0.06);
+  --badge-bg:         #f3f4f6;
+  --badge-text:       #374151;
+
+  --skeleton-from:    #e5e7eb;
+  --skeleton-to:      #f3f4f6;
+
+  --scrollbar-track:  #f3f4f6;
+  --scrollbar-thumb:  #d1d5db;
+}
+
+/* Dark theme */
+[data-theme='dark'] {
+  --bg-primary:       #0f1117;
+  --bg-secondary:     #161822;
+  --bg-tertiary:      #1e2030;
+  --bg-elevated:      #1e2030;
+  --bg-overlay:       rgba(0, 0, 0, 0.6);
+
+  --text-primary:     #f0f1f3;
+  --text-secondary:   #9ca3af;
+  --text-tertiary:    #6b7280;
+  --text-inverse:     #111827;
+
+  --border-primary:   #2a2d3a;
+  --border-secondary: #23263a;
+  --border-focus:     var(--color-primary);
+
+  --input-bg:         #1e2030;
+  --input-border:     #2a2d3a;
+
+  --card-bg:          #161822;
+  --card-border:      #2a2d3a;
+  --card-hover:       #1e2030;
+
+  --badge-bg:         #1e2030;
+  --badge-text:       #d1d5db;
+
+  --skeleton-from:    #1e2030;
+  --skeleton-to:      #2a2d3a;
+
+  --scrollbar-track:  #161822;
+  --scrollbar-thumb:  #2a2d3a;
 }

@@ -1,50 +1,64 @@
-// ===== Favorites Store (Zustand) =====
+/**
+ * Favorites store — saved items synced to localStorage.
+ *
+ * Hydration happens inside the Zustand create function — not in
+ * a useEffect. This means favorites are available immediately on
+ * first render, not after a delayed effect.
+ */
 
-import { create } from 'zustand';
-
-const STORAGE_KEY = 'devex_favorites';
+import { create } from 'zustand'
+import { FAVORITES_KEY } from '../utils/constants'
 
 function loadFavorites() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const raw = localStorage.getItem(FAVORITES_KEY)
+    return raw ? JSON.parse(raw) : []
   } catch {
-    return [];
+    return []
   }
 }
 
 function saveFavorites(favorites) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
+  try {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites))
+  } catch {}
 }
 
-const useFavoritesStore = create((set, get) => ({
+export const useFavoritesStore = create((set, get) => ({
   favorites: loadFavorites(),
 
-  isFavorite: (id) => get().favorites.some((f) => f.id === id),
-
-  addFavorite: (item) => {
-    const favorites = [...get().favorites, item];
-    saveFavorites(favorites);
-    set({ favorites });
+  addFavorite: (result) => {
+    const current = get().favorites
+    if (current.some((f) => f.id === result.id)) return
+    const updated = [...current, result]
+    saveFavorites(updated)
+    set({ favorites: updated })
   },
 
   removeFavorite: (id) => {
-    const favorites = get().favorites.filter((f) => f.id !== id);
-    saveFavorites(favorites);
-    set({ favorites });
+    const updated = get().favorites.filter((f) => f.id !== id)
+    saveFavorites(updated)
+    set({ favorites: updated })
   },
 
-  toggleFavorite: (item) => {
-    if (get().isFavorite(item.id)) {
-      get().removeFavorite(item.id);
+  isFavorite: (id) => get().favorites.some((f) => f.id === id),
+
+  toggleFavorite: (result) => {
+    if (get().isFavorite(result.id)) {
+      get().removeFavorite(result.id)
     } else {
-      get().addFavorite(item);
+      get().addFavorite(result)
     }
   },
 
-  clearFavorites: () => {
-    saveFavorites([]);
-    set({ favorites: [] });
+  exportFavorites: () => {
+    const json = JSON.stringify(get().favorites, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'dev-ecosystem-favorites.json'
+    a.click()
+    URL.revokeObjectURL(url)
   },
-}));
-
-export default useFavoritesStore;
+}))

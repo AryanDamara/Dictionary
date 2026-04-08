@@ -1,48 +1,36 @@
-// ===== GitHub API Integration =====
+import { GITHUB_API, RESULTS_PER_SOURCE, GITHUB_TOKEN_KEY } from '../utils/constants'
+import { normalizeGitHub } from '../utils/normalize'
+import { withRateLimit } from '../ratelimit'
 
-import { API_ENDPOINTS, PAGE_SIZE } from '../utils/constants';
-import { normalizeGitHub } from '../utils/normalize';
-import rateLimitedFetch from '../ratelimit';
-import logger from '../utils/logger';
-
-/**
- * Search GitHub repositories.
- * @param {string} query
- * @param {Object} options - { page, perPage, sort, language }
- * @returns {Promise<{ items: Array, totalCount: number }>}
- */
-export async function searchGitHub(query, options = {}) {
-  const { page = 1, perPage = PAGE_SIZE, sort = 'best-match', language } = options;
-
-  let q = query;
-  if (language) q += ` language:${language}`;
-
-  const params = new URLSearchParams({
-    q,
-    sort: sort === 'relevance' ? 'best-match' : sort === 'stars' ? 'stars' : sort === 'recent' ? 'updated' : 'best-match',
-    order: 'desc',
-    page: String(page),
-    per_page: String(perPage),
-  });
-
-  const url = `${API_ENDPOINTS.GITHUB_SEARCH}?${params}`;
-
-  const headers = {};
-  const token = import.meta.env.VITE_GITHUB_TOKEN;
-  if (token) {
-    headers['Authorization'] = `token ${token}`;
-  }
-  headers['Accept'] = 'application/vnd.github+json';
-
-  try {
-    const data = await rateLimitedFetch(url, { headers });
-    logger.info(`GitHub: ${data.total_count} results for "${query}"`);
-    return {
-      items: (data.items || []).map(normalizeGitHub),
-      totalCount: data.total_count || 0,
-    };
-  } catch (err) {
-    logger.error('GitHub search failed:', err);
-    throw err;
-  }
+function getHeaders() {
+  // Check env var first, then localStorage (set via Settings drawer)
+  const token = import.meta.env.VITE_GITHUB_TOKEN || (() => {
+    try { return localStorage.getItem(GITHUB_TOKEN_KEY) } catch { return null }
+  })()
+  const headers = { 'Accept': 'application/vnd.github+json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return headers
 }
+
+async function _fetchGitHub(query) {
+  const url = `${GITHUB_API}/search/repositories` +
+    `?q=${encodeURIComponent(query)}` +
+    `&sort=stars&order=desc` +
+    `&per_page=${RESULTS_PER_SOURCE}`
+
+  const res = await fetch(url, { headers: getHeaders() })
+
+  if (res.status === 403 || res.status === 429) {
+    const resetAt = res.headers.get('X-RateLimit-Reset')
+    const err = new Error('GitHub rate limit reached')
+    err.type = 'RATE_LIMIT'
+    err.resetAt = resetAt ? new Date(resetAt * 1000) : null
+    throw err
+  }
+  if (!res.ok) throw new Error(`GitHub API error: ${res.status}`)
+
+  const data = await res.json()
+  return (data.items ?? []).map(normalizeGitHub)
+}
+
+export const fetchGitHub = withRateLimit(_fetchGitHub)

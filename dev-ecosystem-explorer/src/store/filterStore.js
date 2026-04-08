@@ -1,30 +1,84 @@
-// ===== Filter Store (Zustand) =====
+/**
+ * Filter store — global filter/sort state for results.
+ */
 
-import { create } from 'zustand';
+import { create } from 'zustand'
+import { VIEW_PREF_KEY } from '../utils/constants'
 
-const useFilterStore = create((set) => ({
-  // State
-  language: '',
-  category: '',
-  sortBy: 'relevance',
-  auth: '',         // For Public APIs: apikey, oauth, etc.
-  https: null,      // For Public APIs: true/false/null (any)
+function loadViewPref() {
+  try { return localStorage.getItem(VIEW_PREF_KEY) || 'grid' } catch { return 'grid' }
+}
 
-  // Actions
-  setLanguage: (language) => set({ language }),
-  setCategory: (category) => set({ category }),
-  setSortBy: (sortBy) => set({ sortBy }),
-  setAuth: (auth) => set({ auth }),
-  setHttps: (https) => set({ https }),
+export const useFilterStore = create((set, get) => ({
+  activeSource: 'all',
+  activeFilters: {
+    language: [],
+    license:  [],
+    category: [],
+    https:    null,
+    auth:     null,
+    official: null,
+  },
+  sort: {
+    field:     'name',
+    direction: 'asc',
+  },
+  viewMode: loadViewPref(),
 
-  resetFilters: () =>
+  setSource: (source) => set({ activeSource: source }),
+
+  toggleFilter: (field, value) => {
+    const current = get().activeFilters
+    if (field === 'https' || field === 'auth' || field === 'official') {
+      set({
+        activeFilters: {
+          ...current,
+          [field]: current[field] === value ? null : value,
+        },
+      })
+    } else {
+      const arr = current[field] ?? []
+      const newArr = arr.includes(value)
+        ? arr.filter((v) => v !== value)
+        : [...arr, value]
+      set({ activeFilters: { ...current, [field]: newArr } })
+    }
+  },
+
+  setSort: (sortConfig) => set({ sort: { ...get().sort, ...sortConfig } }),
+
+  setViewMode: (mode) => {
+    try { localStorage.setItem(VIEW_PREF_KEY, mode) } catch {}
+    set({ viewMode: mode })
+  },
+
+  clearAll: () =>
     set({
-      language: '',
-      category: '',
-      sortBy: 'relevance',
-      auth: '',
-      https: null,
+      activeSource: 'all',
+      activeFilters: {
+        language: [],
+        license:  [],
+        category: [],
+        https:    null,
+        auth:     null,
+        official: null,
+      },
+      sort: { field: 'name', direction: 'asc' },
     }),
-}));
 
-export default useFilterStore;
+  hasActiveFilters: () => {
+    const s = get()
+    const f = s.activeFilters
+    return (
+      s.activeSource !== 'all' ||
+      f.language.length > 0 ||
+      f.license.length > 0 ||
+      f.category.length > 0 ||
+      f.https !== null ||
+      f.auth !== null ||
+      f.official !== null ||
+      s.sort.field !== 'name' ||
+      s.sort.direction !== 'asc'
+    )
+  },
+}))

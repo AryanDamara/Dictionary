@@ -1,43 +1,29 @@
-// ===== AppShell Component =====
-import React from 'react';
+import Header from './Header'
 
-const css = {
-  shell: {
-    display: 'flex',
-    minHeight: 'calc(100vh - var(--header-height))',
-    maxWidth: 'var(--max-content-width)',
-    margin: '0 auto',
-    width: '100%',
-  },
-  sidebar: {
-    width: 'var(--sidebar-width)',
-    flexShrink: 0,
-    padding: 'var(--space-4)',
-    borderRight: '1px solid var(--color-border)',
-    overflowY: 'auto',
-    position: 'sticky',
-    top: 'var(--header-height)',
-    height: 'calc(100vh - var(--header-height))',
-  },
-  main: {
-    flex: 1,
-    padding: 'var(--space-6)',
-    overflowY: 'auto',
-    minWidth: 0,
-  },
-};
-
-export default function AppShell({ sidebar, children }) {
+export default function AppShell({ children }) {
   return (
-    <div style={css.shell}>
-      {sidebar && (
-        <aside style={css.sidebar}>
-          {sidebar}
-        </aside>
-      )}
-      <main style={css.main}>
+    <div className="app-shell">
+      <Header />
+      <main className="app-main">
         {children}
       </main>
+      <style>{`
+        .app-shell {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+        }
+        .app-main {
+          flex: 1;
+          width: 100%;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: var(--space-xl);
+        }
+        @media (max-width: 640px) {
+          .app-main { padding: var(--space-lg); }
+        }
+      `}</style>
     </div>
-  );
+  )
 }

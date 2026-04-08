@@ -1,48 +1,45 @@
-// ===== Exponential Backoff with Jitter =====
-
-import logger from '../utils/logger';
-
 /**
- * Sleep for ms milliseconds.
+ * Exponential backoff for rate-limit errors.
+ *
+ * Like calling a busy restaurant:
+ *   Attempt 1 fails → wait 1s   (BASE_BACKOFF_MS × 2^0)
+ *   Attempt 2 fails → wait 2s   (BASE_BACKOFF_MS × 2^1)
+ *   Attempt 3 fails → wait 4s   (BASE_BACKOFF_MS × 2^2)
+ *   Attempt 4 fails → wait 8s   (BASE_BACKOFF_MS × 2^3)
+ *   All fail         → THROW — the restaurant is closed for the night
+ *
+ * Only retries RATE LIMIT errors (429, 403).
+ * A 404 or 500 won't go away with time — retrying them is pointless.
  */
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+
+import { MAX_RETRY_ATTEMPTS, BASE_BACKOFF_MS } from '../utils/constants'
+
+function isRateLimitError(err) {
+  return (
+    err?.type === 'RATE_LIMIT' ||
+    err?.status === 429 ||
+    err?.status === 403
+  )
 }
 
-/**
- * Retry a function with exponential backoff + jitter.
- * @param {Function} fn - Async function to retry
- * @param {Object} options
- * @returns {Promise<*>}
- */
-export async function withBackoff(fn, options = {}) {
-  const {
-    maxRetries = 3,
-    baseDelay = 1000,
-    maxDelay = 30000,
-    retryOn = (err) => err?.message?.includes('429') || err?.message?.includes('rate limit'),
-  } = options;
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
-  let attempt = 0;
+export async function withBackoff(fn, ...args) {
+  let lastError
 
-  while (true) {
+  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
     try {
-      return await fn();
-    } catch (error) {
-      attempt++;
-      if (attempt > maxRetries || !retryOn(error)) {
-        throw error;
-      }
+      return await fn(...args)
+    } catch (err) {
+      lastError = err
+      if (!isRateLimitError(err)) throw err // don't retry non-rate-limit
 
-      const delay = Math.min(
-        baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000,
-        maxDelay
-      );
-
-      logger.warn(`Backoff: attempt ${attempt}/${maxRetries}, retrying in ${Math.round(delay)}ms`);
-      await sleep(delay);
+      const waitMs = BASE_BACKOFF_MS * Math.pow(2, attempt)
+      await wait(waitMs)
     }
   }
-}
 
-export default withBackoff;
+  throw lastError
+}

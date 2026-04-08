@@ -1,21 +1,17 @@
-// ===== Rate Limit Layer – Public API =====
-
-export { withBackoff } from './backoff';
-export { default as requestQueue } from './requestQueue';
-
-import { withBackoff } from './backoff';
-import requestQueue from './requestQueue';
-import { httpCachedFetch } from '../cache';
-import logger from '../utils/logger';
-
 /**
- * Rate-limited, cached fetch.
- * Combines request queuing, caching, and exponential backoff.
+ * withRateLimit — composes queue + backoff.
+ *
+ * Call order: requestQueue → withBackoff → fn
+ *
+ * Returns a new function with the same signature as fn but
+ * protected by concurrency limiting and exponential backoff.
  */
-export async function rateLimitedFetch(url, options = {}) {
-  return requestQueue.enqueue(() =>
-    withBackoff(() => httpCachedFetch(url, options))
-  );
-}
 
-export default rateLimitedFetch;
+import { requestQueue } from './requestQueue'
+import { withBackoff }  from './backoff'
+
+export function withRateLimit(fn) {
+  return function rateLimited(...args) {
+    return requestQueue.enqueue(() => withBackoff(fn, ...args))
+  }
+}

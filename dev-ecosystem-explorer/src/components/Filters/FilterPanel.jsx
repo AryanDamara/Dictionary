@@ -1,121 +1,116 @@
-// ===== FilterPanel Component =====
-import React from 'react';
-import FilterChip from './FilterChip';
-import SortControls from './SortControls';
+import { useMemo } from 'react'
+import FilterChip from './FilterChip'
 
-const css = {
-  panel: {
-    padding: 'var(--space-4)',
-    background: 'var(--gradient-card)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-lg)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-4)',
-  },
-  title: {
-    fontSize: 'var(--font-size-sm)',
-    fontWeight: 'var(--font-weight-semibold)',
-    color: 'var(--color-text-primary)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-2)',
-  },
-  group: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-2)',
-  },
-  label: {
-    fontSize: 'var(--font-size-xs)',
-    fontWeight: 'var(--font-weight-semibold)',
-    color: 'var(--color-text-muted)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  select: {
-    width: '100%',
-    padding: '8px 12px',
-    background: 'var(--color-bg-input)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-sm)',
-    color: 'var(--color-text-primary)',
-    fontSize: 'var(--font-size-sm)',
-    outline: 'none',
-    cursor: 'pointer',
-  },
-  activeFilters: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 'var(--space-1)',
-  },
-  clearBtn: {
-    padding: '6px 12px',
-    borderRadius: 'var(--radius-sm)',
-    background: 'rgba(239, 68, 68, 0.1)',
-    border: '1px solid rgba(239, 68, 68, 0.2)',
-    color: '#fca5a5',
-    fontSize: 'var(--font-size-xs)',
-    cursor: 'pointer',
-    transition: 'all var(--transition-fast)',
-    width: '100%',
-    textAlign: 'center',
-  },
-};
+export default function FilterPanel({ results }) {
+  const languages = useMemo(
+    () => [...new Set(results.filter((r) => r.language).map((r) => r.language))].sort(),
+    [results]
+  )
+  const licenses = useMemo(
+    () => [...new Set(results.filter((r) => r.license).map((r) => r.license))].sort(),
+    [results]
+  )
+  const categories = useMemo(
+    () => [...new Set(results.filter((r) => r.category).map((r) => r.category))].sort(),
+    [results]
+  )
 
-const LANGUAGES = [
-  '', 'JavaScript', 'TypeScript', 'Python', 'Go', 'Rust',
-  'Java', 'C++', 'Ruby', 'PHP', 'Swift', 'Kotlin',
-];
+  const hasGitHub    = results.some((r) => r.source === 'github')
+  const hasNpm       = results.some((r) => r.source === 'npm')
+  const hasPublicApi = results.some((r) => r.source === 'publicapi')
+  const hasDocker    = results.some((r) => r.source === 'docker')
 
-export default function FilterPanel({ filters, onFilter }) {
-  const { language, sortBy, hasActiveFilters } = filters;
+  const showAny = languages.length > 0 || licenses.length > 0 || categories.length > 0 || hasPublicApi || hasDocker
+
+  if (!showAny) return null
 
   return (
-    <div style={css.panel}>
-      <div style={css.title}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-        </svg>
-        Filters
-      </div>
-
-      <SortControls sortBy={sortBy} onChange={(v) => onFilter('sortBy', v)} />
-
-      <div style={css.group}>
-        <div style={css.label}>Language</div>
-        <select
-          style={css.select}
-          value={language}
-          onChange={(e) => onFilter('language', e.target.value)}
-        >
-          <option value="">All Languages</option>
-          {LANGUAGES.filter(Boolean).map((lang) => (
-            <option key={lang} value={lang}>{lang}</option>
-          ))}
-        </select>
-      </div>
-
-      {hasActiveFilters && (
-        <>
-          <div style={css.group}>
-            <div style={css.label}>Active Filters</div>
-            <div style={css.activeFilters}>
-              {language && (
-                <FilterChip label={`Language: ${language}`} onRemove={() => onFilter('language', '')} />
-              )}
-            </div>
+    <div className="filter-panel">
+      {languages.length > 0 && (hasGitHub || hasNpm) && (
+        <div className="filter-group">
+          <span className="filter-group-title">Language</span>
+          <div className="filter-chips">
+            {languages.map((l) => <FilterChip key={l} field="language" value={l} />)}
           </div>
-          <button
-            style={css.clearBtn}
-            onClick={() => onFilter('reset')}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
-          >
-            Clear All Filters
-          </button>
-        </>
+        </div>
       )}
+
+      {licenses.length > 0 && (
+        <div className="filter-group">
+          <span className="filter-group-title">License</span>
+          <div className="filter-chips">
+            {licenses.map((l) => <FilterChip key={l} field="license" value={l} />)}
+          </div>
+        </div>
+      )}
+
+      {categories.length > 0 && hasPublicApi && (
+        <div className="filter-group">
+          <span className="filter-group-title">Category</span>
+          <div className="filter-chips">
+            {categories.map((c) => <FilterChip key={c} field="category" value={c} />)}
+          </div>
+        </div>
+      )}
+
+      {hasPublicApi && (
+        <div className="filter-group">
+          <span className="filter-group-title">Security</span>
+          <div className="filter-chips">
+            <FilterChip field="https" value={true} label="HTTPS Only" />
+          </div>
+        </div>
+      )}
+
+      {hasPublicApi && (
+        <div className="filter-group">
+          <span className="filter-group-title">Auth</span>
+          <div className="filter-chips">
+            <FilterChip field="auth" value="" label="No Auth" />
+            <FilterChip field="auth" value="apiKey" label="API Key" />
+            <FilterChip field="auth" value="OAuth" label="OAuth" />
+          </div>
+        </div>
+      )}
+
+      {hasDocker && (
+        <div className="filter-group">
+          <span className="filter-group-title">Docker</span>
+          <div className="filter-chips">
+            <FilterChip field="official" value={true} label="Official Only" />
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .filter-panel {
+          display: flex;
+          flex-wrap: wrap;
+          gap: var(--space-lg);
+          padding: var(--space-lg);
+          background: var(--bg-tertiary);
+          border-radius: var(--radius-md);
+          margin-bottom: var(--space-lg);
+          animation: fadeIn 0.2s ease;
+        }
+        .filter-group {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-sm);
+        }
+        .filter-group-title {
+          font-size: var(--text-xs);
+          font-weight: 600;
+          color: var(--text-tertiary);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .filter-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: var(--space-xs);
+        }
+      `}</style>
     </div>
-  );
+  )
 }

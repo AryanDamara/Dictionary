@@ -1,10 +1,15 @@
-// ===== useFavorites Hook =====
+/**
+ * useFavorites — convenience hook wrapping favoritesStore.
+ * Components import this hook, never the store directly.
+ */
 
-import useFavoritesStore from '../store/favoritesStore';
+import { useFavoritesStore } from '../store/favoritesStore'
 
 export function useFavorites() {
-  const { favorites, isFavorite, toggleFavorite, clearFavorites } = useFavoritesStore();
-  return { favorites, isFavorite, toggleFavorite, clearFavorites };
-}
+  const favorites       = useFavoritesStore((s) => s.favorites)
+  const toggle          = useFavoritesStore((s) => s.toggleFavorite)
+  const isFavorite      = useFavoritesStore((s) => s.isFavorite)
+  const exportFavorites = useFavoritesStore((s) => s.exportFavorites)
 
-export default useFavorites;
+  return { favorites, toggle, isFavorite, exportFavorites }
+}

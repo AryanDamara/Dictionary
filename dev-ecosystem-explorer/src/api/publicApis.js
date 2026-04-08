@@ -1,49 +1,20 @@
-// ===== Public APIs Directory Integration =====
+import { PUBLIC_API, RESULTS_PER_SOURCE } from '../utils/constants'
+import { normalizePublicApi } from '../utils/normalize'
+import { withRateLimit } from '../ratelimit'
 
-import { API_ENDPOINTS } from '../utils/constants';
-import { normalizePublicApi } from '../utils/normalize';
-import rateLimitedFetch from '../ratelimit';
-import logger from '../utils/logger';
+async function _fetchPublicApis(query) {
+  const url = `${PUBLIC_API}?title=${encodeURIComponent(query)}`
 
-/**
- * Search public APIs directory.
- * @param {string} query
- * @param {Object} options - { category }
- * @returns {Promise<{ items: Array, totalCount: number }>}
- */
-export async function searchPublicApis(query, options = {}) {
-  const { category } = options;
+  const res = await fetch(url)
 
-  const params = new URLSearchParams();
-  if (query) params.set('title', query);
-  if (category) params.set('category', category);
+  if (!res.ok) throw new Error(`Public APIs error: ${res.status}`)
 
-  const url = `${API_ENDPOINTS.PUBLIC_APIS}?${params}`;
+  const data = await res.json()
+  const entries = data.entries ?? []
 
-  try {
-    const data = await rateLimitedFetch(url);
-    const entries = data.entries || [];
-    logger.info(`Public APIs: ${entries.length} results for "${query}"`);
-
-    return {
-      items: entries.map(normalizePublicApi),
-      totalCount: data.count || entries.length,
-    };
-  } catch (err) {
-    logger.error('Public APIs search failed:', err);
-    throw err;
-  }
+  return entries
+    .slice(0, RESULTS_PER_SOURCE)
+    .map(normalizePublicApi)
 }
 
-/**
- * Get all available categories.
- */
-export async function getCategories() {
-  try {
-    const data = await rateLimitedFetch('https://api.publicapis.org/categories');
-    return data || [];
-  } catch (err) {
-    logger.error('Failed to fetch categories:', err);
-    return [];
-  }
-}
+export const fetchPublicApis = withRateLimit(_fetchPublicApis)

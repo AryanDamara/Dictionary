@@ -1,119 +1,126 @@
-// ===== SearchBar Component =====
-import React, { useRef, useEffect } from 'react';
+import { useState, useRef } from 'react'
+import { useSearchStore } from '../../store/searchStore'
+import AutocompleteDropdown from './AutocompleteDropdown'
 
-const css = {
-  wrapper: {
-    position: 'relative',
-    width: '100%',
-    maxWidth: 600,
-  },
-  input: {
-    width: '100%',
-    padding: '12px 48px 12px 44px',
-    background: 'var(--color-bg-input)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-full)',
-    color: 'var(--color-text-primary)',
-    fontSize: 'var(--font-size-base)',
-    fontWeight: 'var(--font-weight-medium)',
-    outline: 'none',
-    transition: 'all var(--transition-base)',
-  },
-  inputFocused: {
-    borderColor: 'var(--color-accent)',
-    boxShadow: 'var(--shadow-glow)',
-  },
-  searchIcon: {
-    position: 'absolute',
-    left: 16,
-    top: '50%',
-    transform: 'translateY(-50%)',
-    color: 'var(--color-text-muted)',
-    pointerEvents: 'none',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  clearBtn: {
-    position: 'absolute',
-    right: 14,
-    top: '50%',
-    transform: 'translateY(-50%)',
-    background: 'rgba(255,255,255,0.1)',
-    border: 'none',
-    color: 'var(--color-text-secondary)',
-    width: 24,
-    height: 24,
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    fontSize: '14px',
-    transition: 'all var(--transition-fast)',
-  },
-  kbd: {
-    position: 'absolute',
-    right: 14,
-    top: '50%',
-    transform: 'translateY(-50%)',
-    padding: '2px 8px',
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-sm)',
-    color: 'var(--color-text-muted)',
-    fontSize: '11px',
-    fontFamily: 'var(--font-family)',
-    pointerEvents: 'none',
-  },
-};
+export default function SearchBar() {
+  const { query, setQuery } = useSearchStore()
+  const [isOpen, setIsOpen] = useState(false)
+  const inputRef = useRef(null)
 
-export default function SearchBar({ value, onChange, onClear, placeholder = 'Search packages, repos, APIs...' }) {
-  const inputRef = useRef(null);
-  const [focused, setFocused] = React.useState(false);
+  function handleChange(e) {
+    setQuery(e.target.value)
+    setIsOpen(true)
+  }
 
-  // Cmd+K / Ctrl+K to focus
-  useEffect(() => {
-    const handler = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, []);
+  function handleFocus() {
+    setIsOpen(true)
+  }
+
+  function handleBlur() {
+    // Timeout allows dropdown click events to fire before blur closes it
+    setTimeout(() => setIsOpen(false), 180)
+  }
+
+  function handleSelect(value) {
+    setQuery(value)
+    setIsOpen(false)
+    inputRef.current?.focus()
+  }
 
   return (
-    <div style={css.wrapper}>
-      <span style={css.searchIcon}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    <div className="search-bar-wrapper">
+      <div className="search-input-container">
+        <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
-      </span>
-      <input
-        ref={inputRef}
-        id="search-input"
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        placeholder={placeholder}
-        style={{
-          ...css.input,
-          ...(focused ? css.inputFocused : {}),
-        }}
-        aria-label="Search"
-        autoComplete="off"
+        <input
+          id="search-input"
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          placeholder="Search APIs, packages, repositories, crates, gems..."
+          className="search-input"
+          autoComplete="off"
+          spellCheck="false"
+        />
+        {query && (
+          <button
+            className="search-clear"
+            onClick={() => { setQuery(''); inputRef.current?.focus() }}
+            aria-label="Clear search"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        )}
+      </div>
+
+      <AutocompleteDropdown
+        isOpen={isOpen}
+        query={query}
+        onSelect={handleSelect}
+        inputRef={inputRef}
       />
-      {value ? (
-        <button style={css.clearBtn} onClick={onClear} aria-label="Clear search">
-          ✕
-        </button>
-      ) : (
-        <kbd style={css.kbd}>⌘K</kbd>
-      )}
+
+      <style>{`
+        .search-bar-wrapper {
+          position: relative;
+          width: 100%;
+          margin-bottom: var(--space-xl);
+        }
+        .search-input-container {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+        .search-icon {
+          position: absolute;
+          left: var(--space-lg);
+          color: var(--text-tertiary);
+          pointer-events: none;
+          flex-shrink: 0;
+        }
+        .search-input {
+          width: 100%;
+          padding: var(--space-lg) var(--space-lg) var(--space-lg) 48px;
+          border: 1.5px solid var(--input-border);
+          border-radius: var(--radius-lg);
+          background: var(--input-bg);
+          color: var(--text-primary);
+          font-size: var(--text-base);
+          transition: all var(--transition-fast);
+          outline: none;
+        }
+        .search-input:focus {
+          border-color: var(--color-primary);
+          box-shadow: 0 0 0 4px var(--color-primary-light);
+        }
+        .search-input::placeholder {
+          color: var(--text-tertiary);
+        }
+        .search-clear {
+          position: absolute;
+          right: var(--space-md);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: var(--radius-sm);
+          color: var(--text-tertiary);
+          transition: all var(--transition-fast);
+        }
+        .search-clear:hover {
+          color: var(--text-primary);
+          background: var(--bg-tertiary);
+        }
+      `}</style>
     </div>
-  );
+  )
 }

@@ -1,30 +1,31 @@
-// ===== Fuzzy Search Utility =====
-// Uses Fuse.js for client-side fuzzy matching on already-fetched results.
-
-import Fuse from 'fuse.js';
-
-const DEFAULT_OPTIONS = {
-  keys: ['title', 'name', 'description', 'topics'],
-  threshold: 0.4,
-  includeScore: true,
-  minMatchCharLength: 2,
-};
-
 /**
- * Create a Fuse instance for fuzzy searching.
- * @param {Array} items - Normalized result items
- * @param {Object} options - Override Fuse options
+ * Fuzzy character-overlap scorer.
+ *
+ * Counts how many characters from the query appear in each candidate
+ * (case-insensitive). Score = matches / query.length.
+ *
+ * Simple enough that we don't need an external library — keeps the
+ * bundle small and our use case (suggesting alternatives on empty
+ * results) doesn't need sophisticated fuzzy matching.
  */
-export function createFuzzySearch(items, options = {}) {
-  return new Fuse(items, { ...DEFAULT_OPTIONS, ...options });
-}
 
-/**
- * Run a fuzzy search against a list of items.
- * @returns {Array} Matched items sorted by score (best first)
- */
-export function fuzzyFilter(items, query, options = {}) {
-  if (!query || query.trim().length < 2) return items;
-  const fuse = createFuzzySearch(items, options);
-  return fuse.search(query).map((r) => r.item);
+export function fuzzyMatch(query, candidates, topN = 3) {
+  if (!query || !candidates?.length) return []
+
+  const q = query.toLowerCase()
+
+  const scored = candidates
+    .map((candidate) => {
+      const c = candidate.toLowerCase()
+      let matches = 0
+      for (const char of q) {
+        if (c.includes(char)) matches++
+      }
+      return { candidate, score: matches / q.length }
+    })
+    .filter((item) => item.score > 0.3)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topN)
+
+  return scored.map((s) => s.candidate)
 }
